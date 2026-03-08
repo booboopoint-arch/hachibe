@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>打刻　八兵衛</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+
+:root{
+  --navy:#0b1e3a;
+  --navy2:#122d56;
+  --orange:#ffd600;
+  --orange2:#ff9800;
+  --red:#e53935;
+  --green:#4caf50;
+  --gray:#9e9e9e;
+  --white:#ffffff;
+}
+
+body{
+  font-family:'Helvetica Neue',sans-serif;
+  background:var(--navy);
+  color:var(--orange);
+  min-height:100vh;
+  padding:20px 16px;
+  padding-bottom:40px;
+}
+
+h1{
+  font-size:24px;
+  font-weight:900;
+  text-align:center;
+  letter-spacing:3px;
+  margin-bottom:6px;
+  color:var(--orange);
+}
+
+#dateDisplay{
+  text-align:center;
+  font-size:16px;
+  font-weight:700;
+  color:var(--orange);
+  margin-bottom:24px;
+  opacity:0.8;
+}
+
+/* ── スタッフボタン ── */
+#staffButtons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:28px;
+}
+
+.staffBtn{
+  padding:28px 10px;
+  font-size:26px;
+  font-weight:900;
+  border:3px solid var(--orange);
+  background:var(--navy2);
+  color:var(--orange);
+  border-radius:16px;
+  cursor:pointer;
+  font-family:'Helvetica Neue',sans-serif;
+  letter-spacing:2px;
+}
+
+.staffBtn.selected{
+  background:var(--orange);
+  color:var(--navy);
+}
+
+/* ── 打刻フォーム ── */
+#clockForm{
+  display:none;
+  background:var(--navy2);
+  border:2px solid var(--orange);
+  border-radius:16px;
+  padding:24px 20px;
+}
+
+#selectedName{
+  font-size:26px;
+  font-weight:900;
+  margin-bottom:20px;
+  color:var(--orange2);
+  text-align:center;
+}
+
+#clockBtns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:16px;
+}
+
+.clockBtn{
+  padding:30px 10px;
+  font-size:28px;
+  font-weight:900;
+  border:none;
+  border-radius:14px;
+  cursor:pointer;
+  font-family:'Helvetica Neue',sans-serif;
+}
+
+.btnIn{background:var(--green);color:var(--white);}
+.btnOut{background:var(--red);color:var(--white);}
+
+#backBtn{
+  width:100%;
+  padding:18px;
+  font-size:20px;
+  font-weight:900;
+  border:2px solid var(--gray);
+  background:transparent;
+  color:var(--gray);
+  border-radius:12px;
+  cursor:pointer;
+  font-family:'Helvetica Neue',sans-serif;
+  margin-top:8px;
+}
+
+/* ── メッセージ ── */
+#clockMsg{
+  font-size:18px;
+  font-weight:900;
+  text-align:center;
+  margin-top:16px;
+  min-height:28px;
+  color:var(--green);
+}
+
+#clockMsg.error{
+  color:var(--red);
+}
+
+/* ── ローディング ── */
+#loading{
+  display:none;
+  text-align:center;
+  font-size:18px;
+  font-weight:900;
+  color:var(--orange);
+  margin-top:16px;
+}
+</style>
+</head>
+<body>
+
+<h1>八兵衛　打刻</h1>
+<div id="dateDisplay"></div>
+
+<div id="staffButtons">
+  <button class="staffBtn" onclick="selectStaff('のりき',this)">のりき</button>
+  <button class="staffBtn" onclick="selectStaff('くろかわ',this)">くろかわ</button>
+  <button class="staffBtn" onclick="selectStaff('台湾クン',this)">台湾クン</button>
+</div>
+
+<div id="clockForm">
+  <div id="selectedName"></div>
+  <div id="clockBtns">
+    <button class="clockBtn btnIn" onclick="doClock('in')">出勤</button>
+    <button class="clockBtn btnOut" onclick="doClock('out')">退勤</button>
+  </div>
+  <button id="backBtn" onclick="resetStaff()">◀ 戻る</button>
+  <div id="loading">送信中...</div>
+  <div id="clockMsg"></div>
+</div>
+
+<script>
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwS2eDJNXB8cy8gMXOTqfbyiU2PI6OJhPNi6QVgcv488FU6Xi4yMEquuBEJUmaIHOIM/exec"
+
+let selectedStaff = null
+
+/* ── 日付表示 ── */
+function updateDate(){
+  const now = new Date()
+  const days = ["日","月","火","水","木","金","土"]
+  const str = now.getFullYear()+"年"+(now.getMonth()+1)+"月"+now.getDate()+"日（"+days[now.getDay()]+"）"
+  document.getElementById("dateDisplay").innerText = str
+}
+updateDate()
+setInterval(updateDate, 60000)
+
+/* ── 今日の日付 ── */
+function getToday(){
+  const now = new Date()
+  return now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")
+}
+
+/* ── 現在時刻 ── */
+function getNow(){
+  const now = new Date()
+  return String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")
+}
+
+/* ── スタッフ選択 ── */
+function selectStaff(name, btn){
+  selectedStaff = name
+  document.querySelectorAll(".staffBtn").forEach(b=>b.classList.remove("selected"))
+  btn.classList.add("selected")
+  document.getElementById("selectedName").innerText = "▶ "+name
+  document.getElementById("clockForm").style.display = "block"
+  document.getElementById("clockMsg").innerText = ""
+  document.getElementById("clockMsg").className = ""
+}
+
+function resetStaff(){
+  selectedStaff = null
+  document.querySelectorAll(".staffBtn").forEach(b=>b.classList.remove("selected"))
+  document.getElementById("clockForm").style.display = "none"
+  document.getElementById("clockMsg").innerText = ""
+}
+
+/* ── 打刻送信 ── */
+function doClock(type){
+  if(!selectedStaff) return
+
+  const date = getToday()
+  const time = getNow()
+  const label = type === "in" ? "出勤" : "退勤"
+
+  document.getElementById("loading").style.display = "block"
+  document.getElementById("clockMsg").innerText = ""
+
+  const payload = JSON.stringify({staff:selectedStaff, date:date, type:type, time:time})
+
+  fetch(GAS_URL, {
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body:payload
+  })
+  .then(()=>{
+    document.getElementById("loading").style.display = "none"
+    const msg = document.getElementById("clockMsg")
+    msg.className = ""
+    msg.innerText = "✓ "+label+"："+selectedStaff+"\n"+time
+    setTimeout(()=>resetStaff(), 2500)
+  })
+  .catch(err=>{
+    document.getElementById("loading").style.display = "none"
+    const msg = document.getElementById("clockMsg")
+    msg.className = "error"
+    msg.innerText = "❌ 送信失敗。再度お試しください。"
+  })
+}
+
+</script>
+</body>
+</html>
