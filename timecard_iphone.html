@@ -228,13 +228,11 @@ function doClock(type){
   document.getElementById("loading").style.display = "block"
   document.getElementById("clockMsg").innerText = ""
 
-  const payload = JSON.stringify({staff:selectedStaff, date:date, type:type, time:time})
+  const url = GAS_URL + "?staff="+encodeURIComponent(selectedStaff)+"&date="+date+"&type="+type+"&time="+encodeURIComponent(time)
 
-  fetch(GAS_URL, {
-    method:"POST",
-    mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body:payload
+  fetch(url, {
+    method:"GET",
+    mode:"no-cors"
   })
   .then(()=>{
     document.getElementById("loading").style.display = "none"
